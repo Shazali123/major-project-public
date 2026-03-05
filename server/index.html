@@ -1,0 +1,1387 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AV Benchmark Dashboard</title>
+  <meta name="description"
+    content="Antivirus benchmark comparison dashboard — detection scores, performance metrics, and test results." />
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap"
+    rel="stylesheet" />
+
+  <!-- DataTables -->
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css" />
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+
+  <style>
+    /* ─── Design Tokens ────────────────────────────────────── */
+    :root {
+      --bg: #0a0e1a;
+      --bg2: #0f1629;
+      --surface: #141c30;
+      --surface2: #1b2540;
+      --border: #1e2d4a;
+      --cyan: #00e5ff;
+      --cyan-dim: #00b8cc;
+      --green: #00e676;
+      --amber: #ffab40;
+      --red: #ff5252;
+      --text: #e2e8f0;
+      --text-muted: #7a8fa6;
+      --font: 'Inter', sans-serif;
+      --mono: 'JetBrains Mono', monospace;
+    }
+
+    /* ─── Reset & Base ─────────────────────────────────────── */
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ─── Animated background grid ─────────────────────────── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0, 229, 255, .03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 229, 255, .03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .page-wrap {
+      position: relative;
+      z-index: 1;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 24px 60px;
+    }
+
+    /* ─── Header ────────────────────────────────────────────── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 28px 0 20px;
+      border-bottom: 1px solid var(--border);
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-icon {
+      width: 44px;
+      height: 44px;
+      background: linear-gradient(135deg, var(--cyan), #7b61ff);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      box-shadow: 0 0 20px rgba(0, 229, 255, .3);
+    }
+
+    .logo-text h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -.3px;
+    }
+
+    .logo-text p {
+      font-size: .75rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: .75rem;
+      color: var(--text-muted);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 6px 12px;
+      border-radius: 20px;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 6px var(--green);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: .4
+      }
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: none;
+      font-family: var(--font);
+      font-size: .8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .2s;
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+
+    .btn-outline:hover {
+      border-color: var(--cyan);
+      color: var(--cyan);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--cyan-dim), #7b61ff);
+      color: #fff;
+      box-shadow: 0 0 16px rgba(0, 229, 255, .2);
+    }
+
+    .btn-primary:hover {
+      box-shadow: 0 0 24px rgba(0, 229, 255, .35);
+      transform: translateY(-1px);
+    }
+
+    /* ─── Alert Banner ──────────────────────────────────────── */
+    #alert-banner {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255, 82, 82, .1);
+      border: 1px solid rgba(255, 82, 82, .3);
+      border-radius: 10px;
+      padding: 12px 18px;
+      margin: 18px 0 0;
+      font-size: .85rem;
+      color: #ff8a80;
+    }
+
+    /* ─── Summary Cards ─────────────────────────────────────── */
+    .section-label {
+      font-size: .7rem;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+
+    #summary-section {
+      margin-top: 36px;
+    }
+
+    #summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 16px;
+    }
+
+    .av-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px 22px;
+      transition: border-color .25s, transform .25s, box-shadow .25s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .av-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--cyan), #7b61ff);
+      opacity: 0;
+      transition: opacity .25s;
+    }
+
+    .av-card:hover {
+      border-color: var(--cyan-dim);
+      transform: translateY(-3px);
+      box-shadow: 0 12px 40px rgba(0, 229, 255, .08);
+    }
+
+    .av-card:hover::before {
+      opacity: 1;
+    }
+
+    .av-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .av-name {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .av-runs {
+      font-size: .72rem;
+      color: var(--text-muted);
+      background: var(--surface2);
+      padding: 3px 9px;
+      border-radius: 10px;
+    }
+
+    .score-ring {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 8px 0 14px;
+    }
+
+    .score-big {
+      font-size: 2rem;
+      font-weight: 700;
+      font-family: var(--mono);
+      line-height: 1;
+    }
+
+    .score-label {
+      font-size: .7rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .av-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .stat {
+      background: var(--surface2);
+      border-radius: 8px;
+      padding: 8px 10px;
+    }
+
+    .stat-val {
+      font-size: .9rem;
+      font-weight: 600;
+      font-family: var(--mono);
+    }
+
+    .stat-key {
+      font-size: .65rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* ─── Section Divider ───────────────────────────────────── */
+    .section-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 36px 0 0;
+    }
+
+    /* ─── Table Panel ───────────────────────────────────────── */
+    #table-section {
+      margin-top: 28px;
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 22px;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .panel-title {
+      font-size: .95rem;
+      font-weight: 600;
+    }
+
+    .table-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    #filter-select {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: .8rem;
+      padding: 7px 12px;
+      border-radius: 8px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    #filter-select:focus {
+      border-color: var(--cyan);
+    }
+
+    .panel-body {
+      padding: 20px 22px;
+      overflow-x: auto;
+    }
+
+    /* ─── DataTable Overrides ───────────────────────────────── */
+    table#results-table {
+      width: 100% !important;
+      border-collapse: collapse;
+      font-size: .82rem;
+    }
+
+    #results-table thead th {
+      background: var(--surface2) !important;
+      color: var(--text-muted) !important;
+      font-size: .68rem;
+      font-weight: 600;
+      letter-spacing: .8px;
+      text-transform: uppercase;
+      padding: 11px 12px !important;
+      border-bottom: 1px solid var(--border) !important;
+      border-top: none !important;
+      white-space: nowrap;
+    }
+
+    #results-table tbody tr {
+      transition: background .15s;
+      cursor: pointer;
+    }
+
+    #results-table tbody tr:hover td {
+      background: var(--surface2) !important;
+    }
+
+    #results-table tbody td {
+      padding: 11px 12px !important;
+      border-bottom: 1px solid var(--border) !important;
+      border-top: none !important;
+      color: var(--text);
+      vertical-align: middle;
+      background: transparent !important;
+    }
+
+    .dataTables_wrapper .dataTables_filter input {
+      background: var(--surface2) !important;
+      border: 1px solid var(--border) !important;
+      color: var(--text) !important;
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-family: var(--font);
+      font-size: .8rem;
+      outline: none;
+    }
+
+    .dataTables_wrapper .dataTables_filter input:focus {
+      border-color: var(--cyan) !important;
+    }
+
+    .dataTables_wrapper .dataTables_filter label {
+      color: var(--text-muted);
+      font-size: .8rem;
+    }
+
+    .dataTables_wrapper .dataTables_length select {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 4px 6px;
+      font-family: var(--font);
+    }
+
+    .dataTables_wrapper .dataTables_length label {
+      color: var(--text-muted);
+      font-size: .8rem;
+    }
+
+    .dataTables_wrapper .dataTables_info {
+      color: var(--text-muted);
+      font-size: .75rem;
+    }
+
+    .dataTables_wrapper .dataTables_paginate .paginate_button {
+      color: var(--text-muted) !important;
+      border-radius: 6px !important;
+      font-size: .78rem;
+      padding: 4px 8px !important;
+    }
+
+    .dataTables_wrapper .dataTables_paginate .paginate_button.current {
+      background: var(--surface2) !important;
+      border: 1px solid var(--border) !important;
+      color: var(--cyan) !important;
+    }
+
+    .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+      background: var(--surface2) !important;
+      color: var(--text) !important;
+      border-color: var(--border) !important;
+    }
+
+    table.dataTable thead .sorting::after,
+    table.dataTable thead .sorting_asc::after,
+    table.dataTable thead .sorting_desc::after {
+      color: var(--cyan) !important;
+    }
+
+    /* ─── Score Badges ──────────────────────────────────────── */
+    .badge-score {
+      font-family: var(--mono);
+      font-weight: 600;
+      font-size: .82rem;
+      padding: 3px 8px;
+      border-radius: 6px;
+      display: inline-block;
+    }
+
+    .badge-green {
+      background: rgba(0, 230, 118, .15);
+      color: var(--green);
+    }
+
+    .badge-amber {
+      background: rgba(255, 171, 64, .15);
+      color: var(--amber);
+    }
+
+    .badge-red {
+      background: rgba(255, 82, 82, .15);
+      color: var(--red);
+    }
+
+    .badge-detect {
+      font-size: .75rem;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 5px;
+    }
+
+    .badge-yes {
+      background: rgba(0, 230, 118, .12);
+      color: var(--green);
+    }
+
+    .badge-no {
+      background: rgba(255, 82, 82, .12);
+      color: var(--red);
+    }
+
+    .av-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 3px 8px;
+      font-size: .78rem;
+      font-weight: 500;
+    }
+
+    /* ─── Modal ─────────────────────────────────────────────── */
+    #modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .7);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 20px;
+    }
+
+    #modal-overlay.open {
+      display: flex;
+    }
+
+    #modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      width: 100%;
+      max-width: 760px;
+      max-height: calc(100vh - 40px);
+      overflow-y: auto;
+      padding: 32px 34px;
+      animation: modalIn .25s ease;
+    }
+
+    @keyframes modalIn {
+      from {
+        transform: scale(.95);
+        opacity: 0
+      }
+
+      to {
+        transform: scale(1);
+        opacity: 1
+      }
+    }
+
+    #modal-close {
+      float: right;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      line-height: 30px;
+      text-align: center;
+      transition: all .2s;
+    }
+
+    #modal-close:hover {
+      color: var(--red);
+      border-color: var(--red);
+    }
+
+    #modal-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    #modal-meta {
+      font-size: .73rem;
+      color: var(--text-muted);
+      margin-bottom: 22px;
+    }
+
+    .modal-section {
+      margin-bottom: 22px;
+    }
+
+    .modal-section h4 {
+      font-size: .68rem;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: var(--cyan);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .modal-section h4::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .modal-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    .modal-grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .modal-stat {
+      background: var(--surface2);
+      border-radius: 8px;
+      padding: 11px 13px;
+    }
+
+    .modal-stat .val {
+      font-family: var(--mono);
+      font-size: .88rem;
+      font-weight: 600;
+    }
+
+    .modal-stat .key {
+      font-size: .63rem;
+      color: var(--text-muted);
+      margin-top: 3px;
+    }
+
+    .module-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 9px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: .82rem;
+    }
+
+    .module-row:last-child {
+      border-bottom: none;
+    }
+
+    /* Sub-test table */
+    .sub-test-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .78rem;
+      margin-top: 4px;
+    }
+
+    .sub-test-table th {
+      background: var(--bg2);
+      color: var(--text-muted);
+      font-size: .63rem;
+      letter-spacing: .7px;
+      text-transform: uppercase;
+      padding: 7px 10px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sub-test-table td {
+      padding: 8px 10px;
+      border-bottom: 1px solid rgba(30, 45, 74, .6);
+      vertical-align: top;
+    }
+
+    .sub-test-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .sub-test-table tr:hover td {
+      background: rgba(0, 229, 255, .03);
+    }
+
+    /* Module accordion header */
+    .mod-panel {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+
+    .mod-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: var(--surface2);
+      cursor: pointer;
+      user-select: none;
+      gap: 10px;
+    }
+
+    .mod-panel-header:hover {
+      background: var(--border);
+    }
+
+    .mod-panel-header .mod-name {
+      font-weight: 600;
+      font-size: .84rem;
+    }
+
+    .mod-panel-header .mod-meta {
+      font-size: .72rem;
+      color: var(--text-muted);
+      margin-left: auto;
+    }
+
+    .mod-panel-body {
+      padding: 14px 16px;
+      display: none;
+    }
+
+    .mod-panel.open .mod-panel-body {
+      display: block;
+    }
+
+    .mod-panel-toggle {
+      font-size: .75rem;
+      color: var(--text-muted);
+      transition: transform .2s;
+    }
+
+    .mod-panel.open .mod-panel-toggle {
+      transform: rotate(180deg);
+    }
+
+    /* Detail key-value rows inside a module */
+    .detail-kv {
+      display: flex;
+      gap: 8px;
+      padding: 5px 0;
+      border-bottom: 1px solid rgba(30, 45, 74, .5);
+      font-size: .78rem;
+    }
+
+    .detail-kv:last-child {
+      border-bottom: none;
+    }
+
+    .detail-k {
+      color: var(--text-muted);
+      min-width: 155px;
+      flex-shrink: 0;
+    }
+
+    .detail-v {
+      font-family: var(--mono);
+      word-break: break-all;
+    }
+
+    /* Progress bar for score */
+    .score-bar-wrap {
+      background: var(--bg2);
+      border-radius: 4px;
+      height: 5px;
+      margin-top: 6px;
+      overflow: hidden;
+    }
+
+    .score-bar {
+      height: 100%;
+      border-radius: 4px;
+      transition: width .6s ease;
+    }
+
+    /* ─── Loading Skeleton ──────────────────────────────────── */
+    .skeleton {
+      background: linear-gradient(90deg, var(--surface2) 25%, var(--border) 50%, var(--surface2) 75%);
+      background-size: 400%;
+      animation: shimmer 1.4s infinite;
+      border-radius: 6px;
+    }
+
+    @keyframes shimmer {
+      0% {
+        background-position: 100%
+      }
+
+      100% {
+        background-position: -100%
+      }
+    }
+
+    /* ─── Footer ────────────────────────────────────────────── */
+    footer {
+      text-align: center;
+      padding: 28px 0 0;
+      font-size: .72rem;
+      color: var(--text-muted);
+      border-top: 1px solid var(--border);
+      margin-top: 40px;
+    }
+
+    footer span {
+      color: var(--cyan);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="page-wrap">
+
+    <!-- HEADER -->
+    <header>
+      <div class="logo">
+        <div class="logo-icon">🛡️</div>
+        <div class="logo-text">
+          <h1>AV Benchmark Dashboard</h1>
+          <p>Antivirus Detection &amp; Performance Analysis</p>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="status-pill">
+          <div class="status-dot"></div>
+          <span id="status-text">Connecting…</span>
+        </div>
+        <button class="btn btn-outline" id="refresh-btn" title="Refresh data">↻ Refresh</button>
+        <button class="btn btn-primary" id="export-btn">⬇ Export CSV</button>
+      </div>
+    </header>
+
+    <!-- Alert if API unreachable -->
+    <div id="alert-banner">
+      ⚠️ <span id="alert-msg">Could not reach API. Is Flask running?</span>
+    </div>
+
+    <!-- SUMMARY CARDS -->
+    <section id="summary-section">
+      <p class="section-label">AV Comparison — Average Score per Product</p>
+      <div id="summary-grid">
+        <!-- Populated by JS -->
+        <div class="av-card">
+          <div class="skeleton" style="height:120px"></div>
+        </div>
+        <div class="av-card">
+          <div class="skeleton" style="height:120px"></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-divider"></div>
+
+    <!-- TABLE PANEL -->
+    <section id="table-section">
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">📋 All Benchmark Runs</span>
+          <div class="table-controls">
+            <select id="filter-select">
+              <option value="">All Antivirus Products</option>
+            </select>
+          </div>
+        </div>
+        <div class="panel-body">
+          <table id="results-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>AV Product</th>
+                <th>Physical Total ↕</th>
+                <th>Detection</th>
+                <th>Performance</th>
+                <th>EICAR</th>
+                <th>GoPhish</th>
+                <th>Atomic</th>
+                <th>ABAE</th>
+                <th>ABAE Verdict</th>
+                <th>Best Latency (s)</th>
+                <th>CPU Avg %</th>
+                <th>RAM Peak (MB)</th>
+                <th>Disk Write (MB)</th>
+                <th>Date</th>
+                <th>Run ID</th>
+              </tr>
+            </thead>
+            <tbody id="table-body">
+              <!-- Populated by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </div><!-- /page-wrap -->
+
+  <!-- DETAIL MODAL -->
+  <div id="modal-overlay">
+    <div id="modal">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:4px">
+        <div>
+          <div id="modal-title">Run Details</div>
+          <div id="modal-meta"></div>
+        </div>
+        <button id="modal-close">✕</button>
+      </div>
+      <div id="modal-body"><!-- populated by JS --></div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer>
+    AV Benchmark Tool &nbsp;|&nbsp; Server: <span>192.168.1.121</span> &nbsp;|&nbsp;
+    Data from <span>av_benchmarks.sqlite</span>
+  </footer>
+
+  <!-- ─── JavaScript ─────────────────────────────────────────── -->
+  <script>
+    /* ── Config ──────────────────────────────────────────────── */
+    const API_BASE = '/api';   // Nginx proxies this to Flask :5000
+    const REFRESH_MS = 60000;   // Auto-refresh every 60 s
+    let dataTable = null;
+    let allResults = [];
+    let autoTimer = null;
+
+    /* ── Helpers ─────────────────────────────────────────────── */
+    function scoreClass(v) {
+      if (v >= 6) return 'badge-green';
+      if (v >= 4) return 'badge-amber';
+      return 'badge-red';
+    }
+
+    function scoreBadge(v) {
+      const cls = scoreClass(v != null ? v : 0);
+      return `<span class="badge-score ${cls}">${v != null ? v.toFixed(2) : 'N/A'}</span>`;
+    }
+
+    function detectBadge(v) {
+      return v ? '<span class="badge-detect badge-yes">✓ YES</span>'
+        : '<span class="badge-detect badge-no">✗ NO</span>';
+    }
+
+    function fmtDate(ts) {
+      if (!ts) return '—';
+      const d = new Date(ts.replace(' ', 'T') + 'Z');
+      return d.toLocaleString();
+    }
+
+    function setStatus(msg, ok = true) {
+      document.getElementById('status-text').textContent = msg;
+      const dot = document.querySelector('.status-dot');
+      dot.style.background = ok ? 'var(--green)' : 'var(--amber)';
+      dot.style.boxShadow = ok ? '0 0 6px var(--green)' : '0 0 6px var(--amber)';
+    }
+
+    function showAlert(msg) {
+      const b = document.getElementById('alert-banner');
+      document.getElementById('alert-msg').textContent = msg;
+      b.style.display = 'flex';
+    }
+    function hideAlert() { document.getElementById('alert-banner').style.display = 'none'; }
+
+    /* ── Fetch helpers ───────────────────────────────────────── */
+    async function apiFetch(path) {
+      const r = await fetch(API_BASE + path);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json();
+    }
+
+    /* ── Summary Cards ───────────────────────────────────────── */
+    function renderSummary(summary) {
+      const grid = document.getElementById('summary-grid');
+      if (!summary.length) {
+        grid.innerHTML = '<p style="color:var(--text-muted);font-size:.85rem">No data yet.</p>';
+        return;
+      }
+      grid.innerHTML = summary.map(av => {
+        const cls = scoreClass(av.avg_score);
+        const scoreColor = cls === 'badge-green' ? 'var(--green)'
+          : cls === 'badge-amber' ? 'var(--amber)'
+            : 'var(--red)';
+        const barPct = Math.min(100, ((av.avg_score ?? 0) / 8) * 100).toFixed(1);
+        return `
+        <div class="av-card">
+          <div class="av-card-header">
+            <span class="av-name">🛡 ${av.av_name}</span>
+            <span class="av-runs">${av.run_count} run${av.run_count !== 1 ? 's' : ''}</span>
+          </div>
+          <div class="score-ring">
+            <span class="score-big" style="color:${scoreColor}">${av.avg_score ?? '—'}</span>
+            <span class="score-label">Avg Score / 8.00</span>
+            <div class="score-bar-wrap" style="width:100%;margin-top:8px">
+              <div class="score-bar" style="width:${barPct}%;background:${scoreColor}"></div>
+            </div>
+          </div>
+          <div class="av-stats">
+            <div class="stat">
+              <div class="stat-val">${av.best_score ?? '—'}</div>
+              <div class="stat-key">Best Score</div>
+            </div>
+            <div class="stat">
+              <div class="stat-val">${av.best_detection ?? '—'}</div>
+              <div class="stat-key">Best Detection</div>
+            </div>
+            <div class="stat">
+              <div class="stat-val">${av.avg_cpu ?? '—'}%</div>
+              <div class="stat-key">Avg CPU</div>
+            </div>
+            <div class="stat">
+              <div class="stat-val">${av.avg_ram_mb ?? '—'} MB</div>
+              <div class="stat-key">Avg RAM Peak</div>
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    /* ── Table ───────────────────────────────────────────────── */
+    function renderTable(results) {
+      const tbody = document.getElementById('table-body');
+      tbody.innerHTML = results.map((r, i) => `
+      <tr data-runid="${r.run_id}">
+        <td>${i + 1}</td>
+        <td><span class="av-chip">🛡 ${r.av_name}</span></td>
+        <td>${scoreBadge(r.physical_total)}</td>
+        <td>${scoreBadge(r.detection_score)}</td>
+        <td>${scoreBadge(r.performance_score)}</td>
+        <td>${detectBadge(r.eicar_detected)}</td>
+        <td>${detectBadge(r.gophish_detected)}</td>
+        <td>${detectBadge(r.atomic_detected)}</td>
+        <td>${detectBadge(r.abae_detected)}</td>
+        <td style="font-size:.75rem;color:var(--text-muted)">${r.abae_verdict ?? '—'}</td>
+        <td style="font-family:var(--mono)">${r.best_detection_latency_s != null ? r.best_detection_latency_s.toFixed(2) : '—'}</td>
+        <td style="font-family:var(--mono)">${r.cpu_avg != null ? r.cpu_avg.toFixed(1) + '%' : '—'}</td>
+        <td style="font-family:var(--mono)">${r.ram_peak_mb != null ? r.ram_peak_mb.toFixed(1) : '—'}</td>
+        <td style="font-family:var(--mono)">${r.disk_write_mb != null ? r.disk_write_mb.toFixed(2) : '—'}</td>
+        <td style="font-size:.75rem;color:var(--text-muted)">${fmtDate(r.timestamp)}</td>
+        <td style="font-family:var(--mono);font-size:.7rem;color:var(--text-muted)">${r.run_id}</td>
+      </tr>`).join('');
+
+      if (dataTable) { dataTable.destroy(); dataTable = null; }
+
+      dataTable = $('#results-table').DataTable({
+        order: [[2, 'desc']],
+        pageLength: 25,
+        language: { search: '🔍', emptyTable: 'No benchmark runs found.', zeroRecords: 'No matching runs.' },
+        columnDefs: [{ orderable: false, targets: [5, 6, 7, 8] }],
+      });
+
+      // Row click → modal
+      $('#results-table tbody').off('click').on('click', 'tr', function () {
+        const run_id = $(this).data('runid');
+        openModal(run_id);
+      });
+    }
+
+    /* ── AV Filter ───────────────────────────────────────────── */
+    function populateFilter(avs) {
+      const sel = document.getElementById('filter-select');
+      avs.forEach(av => {
+        const opt = document.createElement('option');
+        opt.value = av; opt.textContent = av;
+        sel.appendChild(opt);
+      });
+      sel.addEventListener('change', async () => {
+        const q = sel.value ? `?av=${encodeURIComponent(sel.value)}` : '';
+        const data = await apiFetch(`/results${q}`);
+        renderTable(data.results);
+        allResults = data.results;
+      });
+    }
+
+    /* ── Modal helpers ───────────────────────────────────────── */
+    function kv(k, v) {
+      return `<div class="detail-kv"><span class="detail-k">${k}</span><span class="detail-v">${v ?? '—'}</span></div>`;
+    }
+
+    function modPanel(id, title, badge, metaText, bodyHtml) {
+      return `
+      <div class="mod-panel" id="modpanel-${id}">
+        <div class="mod-panel-header" onclick="togglePanel('modpanel-${id}')">
+          <span class="mod-name">${title}</span>
+          <span class="mod-meta">${metaText}</span>
+          ${badge}
+          <span class="mod-panel-toggle">▾</span>
+        </div>
+        <div class="mod-panel-body">${bodyHtml}</div>
+      </div>`;
+    }
+
+    function renderEicar(mod) {
+      const res = mod.result ?? mod;
+      const det = res.detected;
+      const met = mod.metrics ?? {};
+      let html = '';
+      html += kv('Verdict', res.detection_verdict ?? (det ? 'DETECTED' : 'NOT DETECTED'));
+      html += kv('Detection Time', met.detection_time != null ? met.detection_time + 's after file creation' : 'N/A — no detection within window');
+      if (res.detection_notes) html += kv('Notes', res.detection_notes);
+      html += '<div style="margin-top:10px">' + kv('CPU Avg', (met.cpu_avg ?? '—') + '%') + kv('CPU Peak', (met.cpu_peak ?? '—') + '%') + kv('RAM Δ Avg', fmtRam(met.ram_avg)) + kv('RAM Δ Peak', fmtRam(met.ram_peak)) + kv('Disk Read', (met.disk_read_mb ?? '—') + ' MB') + kv('Disk Write', (met.disk_write_mb ?? '—') + ' MB') + '</div>';
+      return html;
+    }
+
+    function renderGophish(mod) {
+      const res = mod.result ?? mod;
+      const gp = res.gophish_results ?? {};
+      const off = res.offline_demo ?? false;
+      let html = '';
+      if (off || gp.mode === 'Demo') {
+        html += `<p style="color:var(--amber);font-size:.8rem;margin-bottom:8px">⚠ Running in OFFLINE DEMO MODE — GoPhish server not configured.</p>`;
+      }
+      html += kv('Mode', gp.mode ?? (off ? 'Demo' : 'Live'));
+      html += kv('Campaign ID', gp.campaign_id ?? '—');
+      html += kv('Campaign Status', gp.campaign_status ?? '—');
+      html += kv('Phishing URL', gp.phish_url ?? '—');
+      html += kv('URL Accessible', gp.phish_url_accessible ? '✓ Yes — page loaded' : '✗ No — blocked/unreachable');
+      if (gp.phish_page_blocked && gp.block_reason) html += kv('Block Reason', gp.block_reason);
+      html += kv('Credential Submission', gp.cred_submit_success ? '✓ Succeeded (data POSTed)' : '✗ Not submitted / blocked');
+      html += kv('Clicks Recorded', gp.clicks_recorded ?? '—');
+      html += kv('Submits Recorded', gp.submitted_recorded ?? '—');
+      if (gp.verdict_reason) html += kv('Verdict Reason', gp.verdict_reason);
+      const met = mod.metrics ?? {};
+      html += '<div style="margin-top:10px">' + kv('CPU Avg', (met.cpu_avg ?? '—') + '%') + kv('Exec Time', (mod.execution_time ?? '—') + 's') + '</div>';
+      return html;
+    }
+
+    function renderAtomic(mod) {
+      const res = mod.result ?? mod;
+      const tests = res.test_results ?? [];
+      if (!tests.length) return '<p style="color:var(--text-muted);font-size:.8rem">No individual test results recorded.</p>';
+      const nDet = tests.filter(t => t.detected).length;
+      let html = `
+      <p style="font-size:.78rem;color:var(--text-muted);margin-bottom:10px">
+        ${nDet}/${tests.length} techniques detected &nbsp;|&nbsp; Exec: ${mod.execution_time ?? '?'}s
+      </p>
+      <table class="sub-test-table">
+        <thead><tr>
+          <th>TID</th><th>Test Name</th><th>Result</th><th>Elapsed</th><th>Detail</th>
+        </tr></thead>
+        <tbody>
+          ${tests.map(t => `
+            <tr>
+              <td style="font-family:var(--mono);color:var(--cyan);white-space:nowrap">${t.tid ?? '?'}</td>
+              <td>${t.name ?? t.test ?? 'Unknown'}</td>
+              <td>${detectBadge(t.detected)}</td>
+              <td style="font-family:var(--mono);white-space:nowrap">${t.elapsed != null ? t.elapsed + 's' : '—'}</td>
+              <td style="color:var(--text-muted);font-size:.72rem">${t.detail ?? '—'}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`;
+      return html;
+    }
+
+    function renderAbae(mod) {
+      const res = mod.result ?? mod;
+      const tests = res.test_results ?? [];
+      const verdict = res.abae_verdict ?? 'NOT RUN';
+      if (!tests.length) return `<p style="color:var(--text-muted);font-size:.8rem">No behavioral tests recorded. Verdict: ${verdict}</p>`;
+      const nDet = tests.filter(t => t.detected).length;
+      let html = `
+      <p style="font-size:.78rem;color:var(--text-muted);margin-bottom:10px">
+        ${nDet}/${tests.length} behavioral anomalies detected &nbsp;|&nbsp;
+        Signature-Independent Protection: <strong style="color:${verdict === 'PASS' ? 'var(--green)' : 'var(--red)'}">${verdict}</strong>
+      </p>
+      <table class="sub-test-table">
+        <thead><tr>
+          <th>TID</th><th>Test</th><th>Result</th><th>Latency</th><th>Files Modified</th><th>Extra</th>
+        </tr></thead>
+        <tbody>
+          ${tests.map(t => {
+        const ex = t.extra ?? {};
+        const extraParts = [];
+        if (ex.avg_entropy_bits) extraParts.push('Entropy: ' + ex.avg_entropy_bits + ' b/B');
+        if (ex.processes_spawned != null) extraParts.push('Procs: ' + ex.processes_spawned + '/' + (ex.processes_target ?? '?'));
+        if (ex.registry_op_success != null) extraParts.push('Reg: ' + ex.registry_op_success);
+        if (ex.consistency_rate) extraParts.push('Consistency: ' + ex.consistency_rate);
+        return `
+            <tr>
+              <td style="font-family:var(--mono);color:var(--cyan);white-space:nowrap">${t.tid ?? '?'}</td>
+              <td>${t.name ?? t.test ?? 'Unknown'}</td>
+              <td>${detectBadge(t.detected)}</td>
+              <td style="font-family:var(--mono);white-space:nowrap">${t.detection_latency != null ? t.detection_latency + 's' : (t.elapsed != null ? t.elapsed + 's' : '—')}</td>
+              <td style="font-family:var(--mono)">${ex.files_modified_before_detection ?? '—'}</td>
+              <td style="color:var(--text-muted);font-size:.7rem">${extraParts.join(' · ') || '—'}</td>
+            </tr>`;
+      }).join('')}
+        </tbody>
+      </table>`;
+      return html;
+    }
+
+    function fmtRam(mb) {
+      if (mb == null) return '—';
+      if (mb < 1) return (mb * 1024).toFixed(1) + ' KB';
+      return mb.toFixed(2) + ' MB';
+    }
+
+    window.togglePanel = function (id) {
+      document.getElementById(id).classList.toggle('open');
+    };
+
+    /* ── Modal ───────────────────────────────────────────────── */
+    async function openModal(run_id) {
+      const overlay = document.getElementById('modal-overlay');
+      const body = document.getElementById('modal-body');
+      const title = document.getElementById('modal-title');
+      const meta = document.getElementById('modal-meta');
+      overlay.classList.add('open');
+      body.innerHTML = '<p style="color:var(--text-muted);font-size:.85rem;padding:20px 0">Loading run details…</p>';
+
+      try {
+        const r = await apiFetch(`/results/${run_id}`);
+        title.textContent = `${r.av_name}`;
+        meta.textContent = `${r.run_id}  ·  ${fmtDate(r.timestamp)}`;
+
+        const physPct = Math.min(100, ((r.physical_total ?? 0) / 8) * 100).toFixed(1);
+        const physCls = r.physical_total >= 6 ? 'var(--green)' : r.physical_total >= 4 ? 'var(--amber)' : 'var(--red)';
+
+        // ── Scores section ───────────────────────────────────
+        let out = `
+        <div class="modal-section">
+          <h4>Scores</h4>
+          <div class="modal-grid">
+            <div class="modal-stat">
+              <div class="val" style="color:${physCls}">${r.physical_total?.toFixed(2) ?? '—'} / 8.00</div>
+              <div class="key">Physical Total</div>
+              <div class="score-bar-wrap"><div class="score-bar" style="width:${physPct}%;background:${physCls}"></div></div>
+            </div>
+            <div class="modal-stat"><div class="val">${r.detection_score?.toFixed(2) ?? '—'} / 5.00</div><div class="key">Detection Score</div></div>
+            <div class="modal-stat"><div class="val">${r.performance_score?.toFixed(2) ?? '—'} / 3.00</div><div class="key">Performance Score</div></div>
+            <div class="modal-stat"><div class="val">${r.best_detection_latency_s != null ? r.best_detection_latency_s.toFixed(2) + 's' : 'N/A'}</div><div class="key">Best Detection Latency</div></div>
+          </div>
+        </div>`;
+
+        // ── Performance section ──────────────────────────────
+        out += `
+        <div class="modal-section">
+          <h4>System Performance</h4>
+          <div class="modal-grid">
+            <div class="modal-stat"><div class="val">${r.cpu_avg?.toFixed(1) ?? '—'}%</div><div class="key">CPU Average</div></div>
+            <div class="modal-stat"><div class="val">${r.ram_peak_mb?.toFixed(1) ?? '—'} MB</div><div class="key">RAM Peak</div></div>
+            <div class="modal-stat"><div class="val">${r.disk_write_mb?.toFixed(2) ?? '—'} MB</div><div class="key">Disk Write</div></div>
+            <div class="modal-stat"><div class="val">${r.abae_verdict ?? '—'}</div><div class="key">ABAE Verdict</div></div>
+          </div>
+        </div>`;
+
+        // ── Per-module panels ────────────────────────────────
+        if (Array.isArray(r.raw_json) && r.raw_json.length) {
+          out += `<div class="modal-section"><h4>Module Details (click to expand)</h4>`;
+
+          r.raw_json.forEach((mod, idx) => {
+            const modName = mod.name ?? mod.module_id ?? `Module ${idx + 1}`;
+            const metaTxt = `Exec: ${mod.execution_time ?? '?'}s  ·  Status: ${mod.status ?? '?'}`;
+            const badge = detectBadge(mod.detected);
+            let bodyHtml = '';
+
+            const nl = modName.toLowerCase();
+            if (nl.includes('eicar')) {
+              bodyHtml = renderEicar(mod);
+            } else if (nl.includes('gophish') || nl.includes('phish')) {
+              bodyHtml = renderGophish(mod);
+            } else if (nl.includes('atomic')) {
+              bodyHtml = renderAtomic(mod);
+            } else if (nl.includes('abae') || nl.includes('behavioral')) {
+              bodyHtml = renderAbae(mod);
+            } else {
+              // Generic fallback
+              bodyHtml = kv('Status', mod.status) + kv('Execution Time', (mod.execution_time ?? '—') + 's');
+              if (Array.isArray(mod.test_results)) {
+                bodyHtml += renderAtomic(mod);
+              }
+            }
+
+            out += modPanel(idx, modName, badge, metaTxt, bodyHtml);
+          });
+
+          out += `</div>`;
+        }
+
+        body.innerHTML = out;
+
+        // Auto-open first panel
+        const first = body.querySelector('.mod-panel');
+        if (first) first.classList.add('open');
+
+      } catch (e) {
+        body.innerHTML = `<p style="color:var(--red);font-size:.85rem">Failed to load run details: ${e.message}</p>`;
+      }
+    }
+
+    document.getElementById('modal-close').addEventListener('click', () => {
+      document.getElementById('modal-overlay').classList.remove('open');
+    });
+    document.getElementById('modal-overlay').addEventListener('click', (e) => {
+      if (e.target === document.getElementById('modal-overlay'))
+        document.getElementById('modal-overlay').classList.remove('open');
+    });
+
+    /* ── Export CSV ──────────────────────────────────────────── */
+    document.getElementById('export-btn').addEventListener('click', () => {
+      if (!allResults.length) return;
+      const cols = ['run_id', 'av_name', 'physical_total', 'detection_score', 'performance_score',
+        'eicar_detected', 'gophish_detected', 'atomic_detected', 'abae_detected',
+        'abae_verdict', 'best_detection_latency_s', 'cpu_avg', 'ram_peak_mb', 'disk_write_mb', 'timestamp'];
+      const header = cols.join(',');
+      const rows = allResults.map(r => cols.map(c => JSON.stringify(r[c] ?? '')).join(','));
+      const csv = [header, ...rows].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `av_benchmark_${Date.now()}.csv`; a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    /* ── Main Load ───────────────────────────────────────────── */
+    async function loadAll() {
+      hideAlert();
+      setStatus('Loading…', true);
+      try {
+        const [summaryData, resultsData, avsData] = await Promise.all([
+          apiFetch('/summary'),
+          apiFetch('/results?sort=physical_total&order=desc'),
+          apiFetch('/avs'),
+        ]);
+
+        allResults = resultsData.results;
+        renderSummary(summaryData.summary);
+        renderTable(allResults);
+
+        // Rebuild AV filter only on first load
+        if (document.getElementById('filter-select').options.length === 1) {
+          populateFilter(avsData.avs);
+        }
+
+        const now = new Date().toLocaleTimeString();
+        setStatus(`Live — updated ${now}`, true);
+      } catch (e) {
+        setStatus('API unreachable', false);
+        showAlert(`Cannot reach ${API_BASE}. Make sure Flask is running and Nginx is configured. (${e.message})`);
+      }
+    }
+
+    /* ── Refresh & Auto-poll ─────────────────────────────────── */
+    document.getElementById('refresh-btn').addEventListener('click', () => {
+      clearTimeout(autoTimer);
+      loadAll().then(scheduleRefresh);
+    });
+
+    function scheduleRefresh() {
+      autoTimer = setTimeout(() => loadAll().then(scheduleRefresh), REFRESH_MS);
+    }
+
+    // Kick off
+    loadAll().then(scheduleRefresh);
+  </script>
+
+</body>
+
+</html>

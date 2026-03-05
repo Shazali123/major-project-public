@@ -1,0 +1,16 @@
+[Unit]
+Description=AV Benchmark Dashboard Flask API
+After=network.target
+
+[Service]
+User=shaz
+WorkingDirectory=/var/www/html
+ExecStart=/usr/bin/python3 /var/www/html/api.py
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,12 @@
+{
+    "sandbox_dir": "BME_TEST",
+    "file_manipulation_count": 300,
+    "entropy_file_count": 50,
+    "process_burst_count": 20,
+    "process_burst_interval_s": 0.04,
+    "file_burst_ops": 1000,
+    "pass_threshold": 3,
+    "behavioral_consistency_runs": 3,
+    "entropy_high_threshold": 7.5,
+    "test_timeout_s": 45
+}

@@ -1,0 +1,13 @@
+{
+  "host": "Your_host",
+  "api_key": "your_API",
+  "campaign_name": "AV_Benchmark_Test",
+  "smtp_profile": "Internal Test SMTP",
+  "email_template": "Phishing Test Email",
+  "landing_page": "Weaponized_EICAR_Page",
+  "target_email": "test_target@yourdomain.local",
+  "target_first_name": "Test",
+  "target_last_name": "Target",
+  "poll_duration_seconds": 60,
+  "offline_demo_mode": false
+}
