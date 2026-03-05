@@ -163,14 +163,17 @@ Major Project/
 
 ## Screenshots
 
-### Benchmark tool
+### Benchmark Tool
 ![Benchmark Tool](screenshots/Benchmarktool.png)
 
-### Benchmark tool
+### Benchmark Tool In Progress
 ![Benchmark In Progress](screenshots/Benchmarkruninprogress.png)
 
-### Benchmark tool
+### Benchmark Result
 ![Benchmark Result](screenshots/benchmarkcomplete.png)
+
+### GoPhish Dashboard
+![Benchmark Result](screenshots/gophish.png)
 
 ### Dashboard
 ![Dashboard](screenshots/FrontendWebsite.png)
