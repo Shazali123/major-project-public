@@ -164,16 +164,16 @@ Major Project/
 ## Screenshots
 
 ### Benchmark tool
-![Benchmark Tool](screenshots/Benchmark tool.png)
+![Benchmark Tool](screenshots/Benchmarktool.png)
 
 ### Benchmark tool
-![Benchmark In Progress](screenshots/Benchmark run in progress.png)
+![Benchmark In Progress](screenshots/Benchmarkruninprogress.png)
 
 ### Benchmark tool
-![Benchmark Result](screenshots/benchmark complete.png)
+![Benchmark Result](screenshots/benchmarkcomplete.png)
 
 ### Dashboard
-![Dashboard](screenshots/Frontend Website.png)
+![Dashboard](screenshots/FrontendWebsite.png)
 
 
 
