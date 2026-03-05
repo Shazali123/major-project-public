@@ -161,7 +161,19 @@ Major Project/
 
 ## License
 
-Educational Project — UNITAR Learn
+## Screenshots
+
+### Benchmark tool
+![Benchmark Tool](screenshots/Benchmark tool.png)
+
+### Benchmark tool
+![Benchmark In Progress](screenshots/Benchmark run in progress.png)
+
+### Benchmark tool
+![Benchmark Result](screenshots/benchmark complete.png)
+
+### Dashboard
+![Dashboard](screenshots/Frontend Website.png)
 
 
 
